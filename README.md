@@ -63,6 +63,8 @@ curl -X POST http://localhost:8000/api/public/appeals \
   -F "files=@document.pdf"
 ```
 
+**Ограничения:** текст до **5000** символов, каждый файл до **10 МБ** (`MAX_APPEAL_TEXT_LENGTH`, `MAX_UPLOAD_SIZE_MB` в `.env`). При превышении — ответ `400` / `413` с понятным сообщением на русском.
+
 ### Пример: вход в панель
 
 ```bash
@@ -77,6 +79,10 @@ curl -X POST http://localhost:8000/api/admin/auth/login \
 
 - **Email** — если `notify_email=true` и настроен SMTP (`.env`)
 - **Telegram** — если `notify_telegram=true`, указан `telegram_chat_id` и `TELEGRAM_BOT_TOKEN`
+
+Вложения обращения прикрепляются к письму и отправляются в Telegram отдельными файлами (`sendDocument`).
+
+Ссылка на обращение в портале формируется из `PORTAL_URL` в `.env` (например `https://portal.company.com/appeals/123`).
 
 Настройки каналов задаются при создании/редактировании пользователя администратором.
 
@@ -107,7 +113,14 @@ SMTP_FROM=your@gmail.com
 
 ## Переменные окружения
 
-Скопируйте `.env.example` в `.env` и заполните значения. См. также `.env.example`. Для production обязательно смените `SECRET_KEY` и используйте PostgreSQL:
+Скопируйте `.env.example` в `.env` и заполните значения. См. также `.env.example`.
+
+| Переменная | Назначение |
+|------------|------------|
+| `PORTAL_URL` | Адрес веб-портала (фронтенд) для ссылок в уведомлениях |
+| `PUBLIC_BASE_URL` | Устаревший алиас для `PORTAL_URL` (поддерживается) |
+| `TELEGRAM_BOT_TOKEN` | Токен бота |
+| `SMTP_*` | Параметры почты | Для production обязательно смените `SECRET_KEY` и используйте PostgreSQL:
 
 ```
 DATABASE_URL=postgresql+asyncpg://user:pass@host/db

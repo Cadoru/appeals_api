@@ -17,7 +17,9 @@ _telegram = TelegramNotifier()
 
 async def notify_new_appeal(db: AsyncSession, appeal_id: int) -> None:
     result = await db.execute(
-        select(Appeal).options(selectinload(Appeal.topic)).where(Appeal.id == appeal_id)
+        select(Appeal)
+        .options(selectinload(Appeal.topic), selectinload(Appeal.attachments))
+        .where(Appeal.id == appeal_id)
     )
     appeal = result.scalar_one_or_none()
     if appeal is None:

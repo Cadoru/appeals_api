@@ -2,9 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.api.validation_handlers import appeal_validation_exception_handler
 from app.config import get_settings
 from app.database import Base, engine
 from app.services.uploads import ensure_upload_dir
@@ -46,6 +48,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+
+app.add_exception_handler(RequestValidationError, appeal_validation_exception_handler)
 
 
 @app.get("/health")

@@ -17,7 +17,7 @@ class AttachmentResponse(BaseModel):
 
 class AppealCreate(BaseModel):
     topic_id: int
-    text: str = Field(min_length=1, max_length=10000)
+    text: str = Field(min_length=1, max_length=5000)
 
 
 class AppealListItem(BaseModel):

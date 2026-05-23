@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +20,8 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./feedback.db"
 
     upload_dir: str = "uploads"
-    max_upload_size_mb: int = 25
+    max_upload_size_mb: int = 10
+    max_appeal_text_length: int = 5000
     allowed_extensions: str = ".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt,.zip"
 
     smtp_host: str = ""
@@ -30,7 +32,12 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
 
     telegram_bot_token: str = ""
-    public_base_url: str = "http://localhost:8000"
+
+    # URL веб-портала (фронтенд) для ссылок в уведомлениях
+    portal_url: str = Field(
+        default="http://localhost:3000",
+        validation_alias=AliasChoices("PORTAL_URL", "PUBLIC_BASE_URL", "portal_url"),
+    )
     cors_origins: list[str] = ["http://localhost:3000"]
 
 
