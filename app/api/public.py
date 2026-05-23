@@ -30,7 +30,7 @@ async def submit_appeal(
     topic_id: Annotated[int, Form()],
     text: Annotated[str, Form(min_length=1, max_length=10000)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    files: list[UploadFile] = File(default=[]),
+    files: list[UploadFile] = File(...),
 ) -> dict:
     """Anonymous appeal submission with optional attachments."""
     payload = AppealCreate(topic_id=topic_id, text=text)
@@ -45,19 +45,20 @@ async def submit_appeal(
     db.add(appeal)
     await db.flush()
 
-    for upload in files:
-        if not upload.filename:
-            continue
-        original, stored, content_type, size = await save_upload(upload)
-        db.add(
-            Attachment(
-                appeal_id=appeal.id,
-                original_filename=original,
-                stored_filename=stored,
-                content_type=content_type,
-                size_bytes=size,
+    if files:  # ← Проверка на None
+        for upload in files:
+            if not upload.filename:
+                continue
+            original, stored, content_type, size = await save_upload(upload)
+            db.add(
+                Attachment(
+                    appeal_id=appeal.id,
+                    original_filename=original,
+                    stored_filename=stored,
+                    content_type=content_type,
+                    size_bytes=size,
+                )
             )
-        )
 
     await db.flush()
     appeal_id = appeal.id
