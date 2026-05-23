@@ -55,7 +55,7 @@ async def create_user(
 async def update_user(
     user_id: int,
     payload: UserUpdate,
-    _: Annotated[User, Depends(require_admin)],
+    current: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     result = await db.execute(select(User).where(User.id == user_id))
@@ -64,14 +64,37 @@ async def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     data = payload.model_dump(exclude_unset=True)
+    
+    # Handle email change - check if new email is unique
+    if "email" in data and data["email"] != user.email:
+        existing_user = await db.execute(select(User).where(User.email == data["email"]))
+        if existing_user.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Email {data['email']} is already in use"
+            )
+        logging.info(f"User {user.id} email changed from {user.email} to {data['email']}")
+    
+    # Handle password change
     if "password" in data:
         data["hashed_password"] = hash_password(data.pop("password"))
+        logging.info(f"User {user.id} ({user.email}) password changed")
         
-    if "role" in data and _.role == UserRole.OPERATOR:
+    # Prevent operator from changing role
+    if "role" in data and current.role == UserRole.OPERATOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admin can change user role"
         )
+    
+    # Prevent changing admin role (optional security measure)
+    if "role" in data and data["role"] == UserRole.ADMIN and user.role != UserRole.ADMIN:
+        if current.role != UserRole.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admin can grant admin role"
+            )
+        logging.warning(f"User {user.id} ({user.email}) promoted to admin by {current.email}")
 
     for key, value in data.items():
         setattr(user, key, value)
@@ -79,6 +102,7 @@ async def update_user(
     await db.flush()
     await db.refresh(user)
     await db.commit()
+    logging.info(f"User {user.id} ({user.email}) updated")
     return user
 
 
