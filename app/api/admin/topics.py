@@ -1,11 +1,13 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_panel_user
 from app.database import get_db
+from app.models.appeal import Appeal
 from app.models.topic import Topic
 from app.models.user import User
 from app.schemas.topic import TopicCreate, TopicResponse, TopicUpdate
@@ -36,6 +38,8 @@ async def create_topic(
     db.add(topic)
     await db.flush()
     await db.refresh(topic)
+    await db.commit()
+    logging.info(f"Topic created: {topic.name}")
     return topic
 
 
@@ -56,6 +60,7 @@ async def update_topic(
 
     await db.flush()
     await db.refresh(topic)
+    await db.commit()
     return topic
 
 
@@ -64,10 +69,24 @@ async def delete_topic(
     topic_id: int,
     _: Annotated[User, Depends(require_panel_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+    ) -> None:
+    
     result = await db.execute(select(Topic).where(Topic.id == topic_id))
     topic = result.scalar_one_or_none()
     if topic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
+    
+    appeals_count = await db.execute(
+        select(func.count(Appeal.id)).where(Appeal.topic_id == topic_id)
+    )
+    
+    appeal_count: int = appeals_count.scalar() or 0
+    if appeal_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete topic with existing appeals"
+        )
 
     await db.delete(topic)
+    await db.commit()
+    logging.info(f"Topic deleted: {topic.name}")

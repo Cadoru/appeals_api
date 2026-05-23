@@ -117,7 +117,8 @@ async def update_appeal_status(
     appeal.status = payload.status
     await db.flush()
     await db.refresh(appeal)
-
+    await db.commit()
+    
     attachments = [
         AttachmentResponse(
             id=a.id,
