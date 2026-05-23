@@ -27,10 +27,10 @@ def _validation_message(err: dict) -> str:
     return str(msg)
 
 
-async def appeal_validation_exception_handler(
-    request: Request,
-    exc: RequestValidationError,
-) -> JSONResponse:
+async def appeal_validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    if not isinstance(exc, RequestValidationError):
+        raise exc
+
     if request.url.path.endswith("/appeals") and request.method == "POST":
         messages = [_validation_message(e) for e in exc.errors()]
         detail = messages[0] if len(messages) == 1 else messages

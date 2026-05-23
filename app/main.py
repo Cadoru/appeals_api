@@ -1,7 +1,10 @@
 import logging
+from collections.abc import Callable
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 from fastapi import FastAPI
+from starlette.requests import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -49,7 +52,11 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api")
 
-app.add_exception_handler(RequestValidationError, appeal_validation_exception_handler)
+_validation_handler = cast(
+    Callable[[Request, Exception], Any],
+    appeal_validation_exception_handler,
+)
+app.add_exception_handler(RequestValidationError, _validation_handler)
 
 
 @app.get("/health")
