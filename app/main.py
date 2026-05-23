@@ -10,16 +10,26 @@ from app.database import Base, engine
 from app.services.uploads import ensure_upload_dir
 
 logging.basicConfig(level=logging.INFO)
-settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    get_settings.cache_clear()
+    cfg = get_settings()
+    if cfg.smtp_host and cfg.smtp_from:
+        logger.info("SMTP configured: %s:%s as %s", cfg.smtp_host, cfg.smtp_port, cfg.smtp_from)
+    else:
+        logger.warning("SMTP not configured (check .env, not .env.example)")
+
     ensure_upload_dir()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
+
+
+settings = get_settings()
 
 
 app = FastAPI(

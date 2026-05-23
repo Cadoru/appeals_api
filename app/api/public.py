@@ -30,7 +30,7 @@ async def submit_appeal(
     topic_id: Annotated[int, Form()],
     text: Annotated[str, Form(min_length=1, max_length=10000)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    files: list[UploadFile] = File(...),
+    files: list[UploadFile] = File(default=()),
 ) -> dict:
     """Anonymous appeal submission with optional attachments."""
     payload = AppealCreate(topic_id=topic_id, text=text)

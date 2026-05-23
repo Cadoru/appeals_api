@@ -80,9 +80,34 @@ curl -X POST http://localhost:8000/api/admin/auth/login \
 
 Настройки каналов задаются при создании/редактировании пользователя администратором.
 
+### Email: если видите «SMTP not configured»
+
+Приложение читает только файл **`.env`**, не `.env.example`. Нужны как минимум:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD="app-password-with-spaces"
+SMTP_FROM=your@gmail.com
+```
+
+Для Gmail `SMTP_FROM` должен совпадать с `SMTP_USER` (или быть настроенным алиасом). Используйте **пароль приложения** (App Password), не обычный пароль аккаунта: https://myaccount.google.com/apppasswords (нужна двухфакторная аутентификация). Пароль с пробелами — в кавычках в `.env`. После изменений **полностью перезапустите** uvicorn.
+
+Ошибка `535 Username and Password not accepted` — неверный или устаревший App Password; создайте новый и обновите `SMTP_PASSWORD` в `.env`.
+
+Запускайте сервер из каталога проекта с локальным venv: `.venv\Scripts\activate` → `uvicorn app.main:app --reload` (не venv из другого проекта).
+
+### Telegram: если уведомления не приходят
+
+1. Создайте файл **`.env`** в корне проекта (`copy .env.example .env`) — приложение **не читает** `.env.example`.
+2. Укажите `TELEGRAM_BOT_TOKEN=...` в `.env` и **перезапустите** uvicorn.
+3. У пользователя в панели: `notify_telegram=true` и `telegram_chat_id` (ваш chat id).
+4. Напишите боту **`/start`** в Telegram — без этого бот не может писать вам первым.
+5. В логах при ошибке будет ответ Telegram API; при проблемах с прокси в системе запросы к API идут напрямую (`trust_env=false`).
+
 ## Переменные окружения
 
-См. `.env.example`. Для production обязательно смените `SECRET_KEY` и используйте PostgreSQL:
+Скопируйте `.env.example` в `.env` и заполните значения. См. также `.env.example`. Для production обязательно смените `SECRET_KEY` и используйте PostgreSQL:
 
 ```
 DATABASE_URL=postgresql+asyncpg://user:pass@host/db
