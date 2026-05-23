@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
     public_base_url: str = "http://localhost:8000"
+    cors_origins: list[str] = ["http://localhost:3000"]
 
 
 @lru_cache

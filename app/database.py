@@ -14,16 +14,20 @@ if "sqlite" in settings.database_url:
         settings.database_url,
         echo=settings.debug,
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,  # ← Важно для SQLite
+        poolclass=StaticPool,
     )
+    logging.info("Using SQLite database")
 else:
     # Для PostgreSQL используем пул
     engine = create_async_engine(
         settings.database_url,
         echo=settings.debug,
-        pool_size=20,
-        max_overflow=10,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_recycle=settings.db_pool_recycle_seconds,
+        pool_pre_ping=True,
     )
+    logging.info("Using PostgreSQL with connection pooling")
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -41,5 +45,3 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             logging.error(f"Database error: {e}", exc_info=True)
             raise
-        finally:
-            await session.close()
