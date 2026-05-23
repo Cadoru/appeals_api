@@ -32,18 +32,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = True
 
     telegram_bot_token: str = ""
-<<<<<<< HEAD
-
-    # URL веб-портала (фронтенд) для ссылок в уведомлениях
-    portal_url: str = Field(
-        default="http://localhost:3000",
-        validation_alias=AliasChoices("PORTAL_URL", "PUBLIC_BASE_URL", "portal_url"),
-    )
-    cors_origins: list[str] = ["http://localhost:3000"]
-=======
     public_base_url: str = "http://localhost:8000"
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
->>>>>>> 976dc1d6ed553e2a0c0b985766cfd3e7a107c95e
 
 
 @lru_cache
