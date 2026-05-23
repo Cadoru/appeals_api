@@ -9,6 +9,7 @@ from app.auth import hash_password, require_admin
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.repositories.user_repository import UserRepository
 
 router = APIRouter()
 
@@ -17,11 +18,10 @@ router = APIRouter()
 async def list_users(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    skip: int = 0,
-    limit: int = 10,
 ) -> list[User]:
-    result = await db.execute(select(User).order_by(User.id).offset(skip).limit(limit))
-    return list(result.scalars().all())
+    repo = UserRepository(db)
+    users = await repo.list()
+    return users
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -29,10 +29,12 @@ async def create_user(
     payload: UserCreate,
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> User:
-    existing = await db.execute(select(User).where(User.email == payload.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+)-> User:
+    repo = UserRepository(db)
+    user = await repo.get_by_email(payload.email)
+    
+    if user:
+         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
 
     user = User(
         email=payload.email,
@@ -43,10 +45,7 @@ async def create_user(
         notify_telegram=payload.notify_telegram,
         telegram_chat_id=payload.telegram_chat_id,
     )
-    db.add(user)
-    await db.flush()
-    await db.refresh(user)
-    await db.commit()
+    await repo.create(user=user)
     logging.info(f"User created: {user.email} with role {user.role}")
     return user
 
@@ -58,8 +57,9 @@ async def update_user(
     current: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    repo = UserRepository(db)
+    user = await repo.get_by_id(user_id)
+    
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -67,8 +67,8 @@ async def update_user(
     
     # Handle email change - check if new email is unique
     if "email" in data and data["email"] != user.email:
-        existing_user = await db.execute(select(User).where(User.email == data["email"]))
-        if existing_user.scalar_one_or_none():
+        existing_user = await repo.get_by_email(data["email"])
+        if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Email {data['email']} is already in use"
@@ -96,12 +96,10 @@ async def update_user(
             )
         logging.warning(f"User {user.id} ({user.email}) promoted to admin by {current.email}")
 
-    for key, value in data.items():
-        setattr(user, key, value)
+    for key, value in data.items(): setattr(user, key, value)
 
-    await db.flush()
-    await db.refresh(user)
-    await db.commit()
+    await repo.update(user)
+    
     logging.info(f"User {user.id} ({user.email}) updated")
     return user
 
@@ -115,11 +113,9 @@ async def delete_user(
     if user_id == current.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete yourself")
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    repo = UserRepository(db)
+    user = await repo.get_by_id(user_id)
+    if user is None:  raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    await db.delete(user)
-    await db.commit()
+    await repo.delete(user)
     logging.warning(f"User deleted: {user.email}")
