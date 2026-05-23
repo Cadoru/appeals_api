@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
@@ -62,10 +63,15 @@ async def submit_appeal(
     appeal_id = appeal.id
 
     async def _notify() -> None:
-        async with AsyncSessionLocal() as session:
-            await notify_new_appeal(session, appeal_id)
-            await session.commit()
+        try:
+            async with AsyncSessionLocal() as session:
+                await notify_new_appeal(session, appeal_id)
+                await session.commit()
+        except Exception as e:
+            logging.error(f"Notification failed for appeal {appeal_id}: {e}")
 
     background_tasks.add_task(_notify)
+    
+    await db.commit()
 
     return {"id": appeal_id, "message": "Обращение принято"}

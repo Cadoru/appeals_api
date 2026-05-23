@@ -43,6 +43,7 @@ async def create_user(
     db.add(user)
     await db.flush()
     await db.refresh(user)
+    await db.commit()
     return user
 
 
@@ -67,6 +68,7 @@ async def update_user(
 
     await db.flush()
     await db.refresh(user)
+    await db.commit()
     return user
 
 
@@ -85,3 +87,4 @@ async def delete_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     await db.delete(user)
+    await db.commit()
