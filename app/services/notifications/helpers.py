@@ -6,8 +6,11 @@ from app.models.appeal import Appeal, Attachment
 
 def appeal_portal_url(appeal_id: int) -> str:
     """Ссылка на обращение в веб-портале (фронтенд)."""
-    base = get_settings().portal_url.rstrip("/")
-    return f"{base}/appeals/{appeal_id}"
+    settings = get_settings()
+    base = getattr(settings, "portal_url", None) or getattr(
+        settings, "public_base_url", "http://localhost:3000"
+    )
+    return f"{base.rstrip('/')}/appeals/{appeal_id}"
 
 
 def collect_attachment_files(appeal: Appeal) -> list[tuple[Path, str, str | None]]:
