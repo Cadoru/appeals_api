@@ -1,0 +1,16 @@
+{
+  "version": "0.2",
+  "language": "en,ru",
+  "words": [
+    "selectinload",
+    "aiosqlite",
+    "aiosmtplib",
+    "asyncpg",
+    "passlib",
+    "pydantic",
+    "uvicorn",
+    "fastapi",
+    "sqlalchemy",
+    "alembic"
+  ]
+}
