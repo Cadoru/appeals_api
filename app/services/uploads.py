@@ -19,7 +19,7 @@ def ensure_upload_dir() -> Path:
     return path
 
 
-def validate_upload(file: UploadFile) -> None:
+def validate_upload(file: UploadFile) -> str:
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Filename is required")
 
@@ -30,9 +30,11 @@ def validate_upload(file: UploadFile) -> None:
             detail=f"File type not allowed. Allowed: {settings.allowed_extensions}",
         )
 
+    return file.filename
+
 
 async def save_upload(file: UploadFile) -> tuple[str, str, str | None, int]:
-    validate_upload(file)
+    filename = validate_upload(file)
     content = await file.read()
     max_bytes = settings.max_upload_size_mb * 1024 * 1024
     if len(content) > max_bytes:
@@ -42,10 +44,16 @@ async def save_upload(file: UploadFile) -> tuple[str, str, str | None, int]:
         )
 
     upload_dir = ensure_upload_dir()
-    stored_name = f"{uuid.uuid4().hex}{Path(file.filename).suffix.lower()}"
+    stored_name = f"{uuid.uuid4().hex}{Path(filename).suffix.lower()}"
     stored_path = upload_dir / stored_name
 
-    async with aiofiles.open(stored_path, "wb") as out:
-        await out.write(content)
+    try:
+        async with aiofiles.open(stored_path, "wb") as out:
+            await out.write(content)
+    except IOError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save file"
+        ) from e
 
-    return file.filename, stored_name, file.content_type, len(content)
+    return filename, stored_name, file.content_type, len(content)

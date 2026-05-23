@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import hash_password, require_admin
 from app.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter()
@@ -16,8 +17,10 @@ router = APIRouter()
 async def list_users(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    skip: int = 0,
+    limit: int = 10,
 ) -> list[User]:
-    result = await db.execute(select(User).order_by(User.id))
+    result = await db.execute(select(User).order_by(User.id).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 
@@ -44,6 +47,7 @@ async def create_user(
     await db.flush()
     await db.refresh(user)
     await db.commit()
+    logging.info(f"User created: {user.email} with role {user.role}")
     return user
 
 
@@ -62,6 +66,12 @@ async def update_user(
     data = payload.model_dump(exclude_unset=True)
     if "password" in data:
         data["hashed_password"] = hash_password(data.pop("password"))
+        
+    if "role" in data and _.role == UserRole.OPERATOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can change user role"
+        )
 
     for key, value in data.items():
         setattr(user, key, value)
@@ -88,3 +98,4 @@ async def delete_user(
 
     await db.delete(user)
     await db.commit()
+    logging.warning(f"User deleted: {user.email}")
