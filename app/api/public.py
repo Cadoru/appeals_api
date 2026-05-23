@@ -63,12 +63,16 @@ async def submit_appeal(
     appeal_id = appeal.id
 
     async def _notify() -> None:
+        session = None
         try:
-            async with AsyncSessionLocal() as session:
-                await notify_new_appeal(session, appeal_id)
-                await session.commit()
+            session = AsyncSessionLocal()
+            await notify_new_appeal(session, appeal_id)
+            await session.commit()
         except Exception as e:
             logging.error(f"Notification failed for appeal {appeal_id}: {e}")
+        finally:
+            if session:
+                await session.close()
 
     background_tasks.add_task(_notify)
     

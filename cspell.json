@@ -11,6 +11,8 @@
     "uvicorn",
     "fastapi",
     "sqlalchemy",
-    "alembic"
+    "alembic",
+    "poolclass",
+    "StaticPool"
   ]
 }
